@@ -57,37 +57,41 @@
     color:var(--acc2);border:1px solid #4a3220;background:#221809;
     padding:5px 12px;border-radius:99px;text-transform:uppercase;}
 
+  .qstat{text-align:center;margin:18px 0 4px;}
+  .qstat-lbl{font-size:13px;font-weight:800;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;}
+  .qstat-name{font-size:34px;font-weight:900;margin:4px 0 0;
+    background:linear-gradient(135deg,var(--acc2),var(--acc));
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+
   .timer-wrap{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin:0 0 18px;}
   #timerbar{height:100%;width:100%;border-radius:99px;
     background:linear-gradient(90deg,var(--acc2),var(--acc));transition:width .1s linear;}
   #timerbar.low{background:var(--red);}
 
-  .slider-block{margin:0 0 20px;}
   .slider-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
-  .slider-lbl{font-size:13px;font-weight:800;letter-spacing:.1em;color:var(--dim);}
-  .slider-val{font-size:30px;font-weight:900;font-variant-numeric:tabular-nums;}
-  input[type=range]{width:100%;appearance:none;-webkit-appearance:none;height:10px;border-radius:99px;
-    background:linear-gradient(90deg,var(--acc) var(--fill,50%),var(--line) var(--fill,50%));outline:none;}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;
-    background:#fff;border:5px solid var(--acc);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;}
-  input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
-    background:#fff;border:5px solid var(--acc);cursor:pointer;}
+  .slider-val{font-size:44px;font-weight:900;font-variant-numeric:tabular-nums;}
+  .slider-unit{font-size:20px;color:var(--dim);font-weight:700;}
+  input[type=range]{width:100%;appearance:none;-webkit-appearance:none;height:12px;border-radius:99px;
+    background:linear-gradient(90deg,var(--acc) var(--fill,50%),var(--line) var(--fill,50%));outline:none;margin:6px 0 2px;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:34px;height:34px;border-radius:50%;
+    background:#fff;border:6px solid var(--acc);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;}
+  input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;
+    background:#fff;border:6px solid var(--acc);cursor:pointer;}
+  .slider-scale{display:flex;justify-content:space-between;color:var(--dim);font-size:12px;font-variant-numeric:tabular-nums;}
 
-  .rev-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);}
-  .rev-row:last-child{border-bottom:none;}
-  .rev-lbl{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--dim);width:36px;}
-  .rev-guess{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;}
-  .rev-arrow{color:var(--dim);}
-  .rev-act{font-size:20px;font-weight:800;color:var(--acc2);font-variant-numeric:tabular-nums;}
-  .rev-pts{margin-left:auto;font-size:16px;font-weight:800;padding:5px 12px;border-radius:99px;background:var(--card2);}
+  .rev-row{display:flex;align-items:center;gap:10px;padding:14px 0;}
+  .rev-lbl{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--dim);}
+  .rev-guess{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;}
+  .rev-arrow{color:var(--dim);font-size:20px;}
+  .rev-act{font-size:26px;font-weight:800;color:var(--acc2);font-variant-numeric:tabular-nums;}
+  .rev-pts{margin-left:auto;font-size:18px;font-weight:800;padding:6px 14px;border-radius:99px;background:var(--card2);}
   .rev-pts.g{color:var(--grn);} .rev-pts.y{color:var(--yel);} .rev-pts.r{color:var(--red);}
-  .rev-total{text-align:center;font-size:15px;color:var(--dim);margin-top:12px;}
-  .rev-total b{color:var(--txt);font-size:22px;}
+  .rev-note{text-align:center;font-size:13px;color:var(--dim);margin-top:10px;}
 
   .score-big{text-align:center;font-size:64px;font-weight:900;margin:6px 0 0;font-variant-numeric:tabular-nums;}
   .rank-line{text-align:center;font-size:20px;font-weight:800;margin:4px 0 18px;}
   .sharebox{background:#000;border:1px solid var(--line);border-radius:14px;padding:16px;
-    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;line-height:1.75;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;line-height:1.8;
     white-space:pre-wrap;word-break:break-word;margin-bottom:14px;}
   .fine{text-align:center;color:var(--dim);font-size:12px;margin-top:18px;line-height:1.6;}
   .howto{font-size:14px;color:var(--dim);line-height:1.7;}
@@ -102,7 +106,7 @@
     <div class="logo">THE DAILY NBA GUESSING GAME</div>
     <div class="ball">🏀</div>
     <h1 class="brand">STATLINE</h1>
-    <p class="tag">5 players. 3 stats each.<br>How well do you <b style="color:var(--txt)">know ball</b>?</p>
+    <p class="tag">5 players. 5 stats. Seasons 2010–2026.<br>How well do you <b style="color:var(--txt)">know ball</b>?</p>
 
     <div class="card">
       <div class="row">
@@ -115,11 +119,11 @@
     <button class="btn btn-s" id="btn-practice">Practice Mode</button>
 
     <div class="card howto">
-      <b>How it works.</b> Drag the sliders to guess each player's per-game PTS, REB and AST
-      for the <b>season shown</b> — any season from 2010 through 2025-26.
-      Closer = more points. Faster = bonus multiplier. 30 seconds per player — no time to Google.
+      <b>How it works.</b> Each question gives you a <b>player + season</b> and asks for <b>one stat</b> —
+      PTS, REB, AST, FG%, 3P% or FT%. Drag the slider to your guess.
+      Closer = more points. Faster = bonus multiplier. 20 seconds each — no time to Google.
     </div>
-    <p class="fine">Same 5 players for everyone, every day.<br>Share your card. Settle the debate.</p>
+    <p class="fine">Same 5 questions for everyone, every day.<br>Share your card. Settle the debate.</p>
   </section>
 
   <!-- GAME -->
@@ -131,21 +135,18 @@
       <p class="pmeta" id="q-meta">–</p>
       <span class="pseason" id="q-season">–</span>
     </div>
+
+    <div class="qstat">
+      <div class="qstat-lbl">Guess their</div>
+      <div class="qstat-name" id="q-statname">–</div>
+    </div>
+
     <div class="timer-wrap"><div id="timerbar"></div></div>
 
     <div class="card">
-      <div class="slider-block">
-        <div class="slider-head"><span class="slider-lbl">Points</span><span class="slider-val" id="v-pts">15.0</span></div>
-        <input type="range" id="s-pts" min="0" max="35" step="0.1" value="15">
-      </div>
-      <div class="slider-block">
-        <div class="slider-head"><span class="slider-lbl">Rebounds</span><span class="slider-val" id="v-reb">5.0</span></div>
-        <input type="range" id="s-reb" min="0" max="16" step="0.1" value="5">
-      </div>
-      <div class="slider-block" style="margin-bottom:4px">
-        <div class="slider-head"><span class="slider-lbl">Assists</span><span class="slider-val" id="v-ast">4.0</span></div>
-        <input type="range" id="s-ast" min="0" max="12" step="0.1" value="4">
-      </div>
+      <div class="slider-head"><span></span><span><span class="slider-val" id="s-val">–</span><span class="slider-unit" id="s-unit"></span></span></div>
+      <input type="range" id="slider" min="0" max="35" step="0.1" value="15">
+      <div class="slider-scale"><span id="s-min">0</span><span id="s-max">35</span></div>
     </div>
 
     <button class="btn btn-p" id="btn-lock">Lock It In 🔒</button>
@@ -158,10 +159,16 @@
       <p class="pname" id="r-name" style="font-size:22px">–</p>
       <p class="pmeta" id="r-meta">–</p>
     </div>
-    <div class="card" id="rev-rows"></div>
-    <div class="rev-total">Question score<br><b id="rev-qscore">0</b></div>
+    <div class="card">
+      <div class="rev-row">
+        <div><div class="rev-lbl" id="r-statlbl">PTS</div>
+        <span class="rev-guess" id="r-guess">–</span><span class="rev-arrow"> → </span><span class="rev-act" id="r-act">–</span></div>
+        <span class="rev-pts" id="r-pts">+0</span>
+      </div>
+      <div class="rev-note" id="r-note"></div>
+    </div>
     <div style="height:16px"></div>
-    <button class="btn btn-p" id="btn-next">Next Player →</button>
+    <button class="btn btn-p" id="btn-next">Next →</button>
   </section>
 
   <!-- RESULTS -->
@@ -183,55 +190,66 @@
 <script src="data2.js"></script>
 <script>
 "use strict";
-const PLAYERS = D1.concat(D2).map(a=>({name:a[0],team:a[1],season:a[2],pts:a[3],reb:a[4],ast:a[5]}));
-const SEASON_LABEL = "2010–2026";
+const PLAYERS = D1.concat(D2).map(a=>({name:a[0],team:a[1],season:a[2],pts:a[3],reb:a[4],ast:a[5],fgp:a[6],tpp:a[7],ftp:a[8]}));
+
+/* ---------- stat definitions ---------- */
+const STATS = {
+  pts:{label:"Points",       short:"PTS", min:0,  max:35,  step:0.1, def:15, k:12, suffix:""},
+  reb:{label:"Rebounds",     short:"REB", min:0,  max:16,  step:0.1, def:5,  k:25, suffix:""},
+  ast:{label:"Assists",      short:"AST", min:0,  max:12,  step:0.1, def:4,  k:30, suffix:""},
+  fgp:{label:"Field Goal %", short:"FG%", min:30, max:70,  step:0.1, def:45, k:30, suffix:"%"},
+  tpp:{label:"Three Point %",short:"3P%", min:20, max:55,  step:0.1, def:36, k:35, suffix:"%"},
+  ftp:{label:"Free Throw %", short:"FT%", min:50, max:100, step:0.1, def:78, k:35, suffix:"%"},
+};
+const STAT_KEYS = Object.keys(STATS);
+const TIME_LIMIT = 20;
 
 /* ---------- utils ---------- */
 const $ = id => document.getElementById(id);
 function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 function todayStr(d){d=d||new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
-function teamLabel(t){return t==="2TM"?"DAL/LAL":t;}
+function teamLabel(t){return t==="2TM"?"MULTI":t;}
+function shuffle(arr,rnd){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 
-/* ---------- puzzle selection ---------- */
-function pickFive(seedStr){
-  const rnd = mulberry32(hashStr("statline|"+seedStr));
+/* ---------- daily questions: 5 distinct players, 5 different stats ---------- */
+function pickQuestions(seedStr){
+  const rnd = mulberry32(hashStr("statline|v3|"+seedStr));
   const idx = new Set(); const names = new Set();
   let guard = 0;
   while(idx.size<5 && guard++<20000){
     const i = Math.floor(rnd()*PLAYERS.length);
-    const nm = PLAYERS[i].name;
-    if(names.has(nm)) continue; // same player, different season — skip
-    names.add(nm); idx.add(i);
+    if(names.has(PLAYERS[i].name)) continue;
+    names.add(PLAYERS[i].name); idx.add(i);
   }
-  return [...idx].map(i=>PLAYERS[i]);
+  const statOrder = shuffle(STAT_KEYS, rnd).slice(0,5); // 5 of 6 stats, rotates daily
+  return [...idx].map((i,q)=>({player:PLAYERS[i], stat:statOrder[q]}));
 }
-const EPOCH = new Date(2026,9,11); // Oct 11 2026 = puzzle #1
+const EPOCH = new Date(2026,9,11);
 function puzzleNum(dstr){
   const [y,m,dd]=dstr.split("-").map(Number);
-  const d=new Date(y,m-1,dd);
-  return Math.floor((d-EPOCH)/86400000)+1;
+  return Math.floor((new Date(y,m-1,dd)-EPOCH)/86400000)+1;
 }
 
 /* ---------- scoring ---------- */
-const TIME_LIMIT = 30; // seconds per question
-function statScore(guess, actual, timeFrac){
-  const base = Math.max(0, 100 - 15*Math.abs(guess-actual));
+function statScore(guess, actual, k, timeFrac){
+  const base = Math.max(0, 100 - k*Math.abs(guess-actual));
   return Math.round(base * (1 + 0.5*timeFrac));
 }
 function square(diff){ return diff<=1 ? "🟩" : diff<=2.5 ? "🟨" : "🟥"; }
+function cls(diff){ return diff<=1 ? "g" : diff<=2.5 ? "y" : "r"; }
 function rankFor(s){
-  if(s>=2000) return ["Basketball Savant","🏆"];
-  if(s>=1700) return ["Knows Ball","🧠"];
-  if(s>=1400) return ["All-Star","⭐"];
-  if(s>=1000) return ["Starter","💪"];
-  if(s>=600)  return ["Role Player","🔧"];
+  if(s>=650) return ["Basketball Savant","🏆"];
+  if(s>=540) return ["Knows Ball","🧠"];
+  if(s>=430) return ["All-Star","⭐"];
+  if(s>=330) return ["Starter","💪"];
+  if(s>=220) return ["Role Player","🔧"];
   return ["Casual","🛋️"];
 }
-function cls(diff){ return diff<=1 ? "g" : diff<=2.5 ? "y" : "r"; }
+function fmt(v,suffix){ return v.toFixed(1)+suffix; }
 
 /* ---------- state ---------- */
-let mode="daily", players=[], qi=0, results=[];
+let mode="daily", questions=[], qi=0, results=[];
 let timerId=null, tStart=0, locked=false;
 
 /* ---------- screens ---------- */
@@ -257,25 +275,28 @@ function renderHome(){
 /* ---------- game flow ---------- */
 function startGame(m){
   mode=m;
-  players = m==="daily" ? pickFive(todayStr()) : pickFive("practice|"+Date.now()+"|"+Math.random());
+  questions = pickQuestions(m==="daily" ? todayStr() : "practice|"+Date.now()+"|"+Math.random());
   qi=0; results=[];
-  $("game-mode-lbl").textContent=(m==="daily"?"DAILY · #"+puzzleNum(todayStr()):"PRACTICE")+" · "+SEASON_LABEL;
+  $("game-mode-lbl").textContent=(m==="daily"?"DAILY · #"+puzzleNum(todayStr()):"PRACTICE")+" · 2010–2026";
   renderDots(); askQuestion();
 }
 function renderDots(){
-  $("dots").innerHTML = players.map((_,i)=>
+  $("dots").innerHTML = questions.map((_,i)=>
     `<div class="dot${i<qi?" done":""}${i===qi?" now":""}"></div>`).join("");
 }
 function askQuestion(){
   locked=false;
-  const p=players[qi];
+  const q=questions[qi], p=q.player, cfg=STATS[q.stat];
   $("q-name").textContent=p.name;
   $("q-meta").textContent=teamLabel(p.team);
-  $("q-season").textContent=p.season+" season averages";
-  // reset sliders to sane defaults
-  setSlider("pts",15,0,35); setSlider("reb",5,0,16); setSlider("ast",4,0,12);
+  $("q-season").textContent=p.season+" season";
+  $("q-statname").textContent=cfg.label;
+  const s=$("slider");
+  s.min=cfg.min; s.max=cfg.max; s.step=cfg.step; s.value=cfg.def;
+  paintSlider(); updateVal();
+  $("s-min").textContent=cfg.min+cfg.suffix; $("s-max").textContent=cfg.max+cfg.suffix;
+  $("s-unit").textContent=cfg.suffix;
   renderDots(); show("screen-game");
-  // timer
   clearInterval(timerId); tStart=Date.now();
   const bar=$("timerbar"); bar.classList.remove("low");
   timerId=setInterval(()=>{
@@ -285,55 +306,38 @@ function askQuestion(){
     if(el>=TIME_LIMIT) lockIn();
   },100);
 }
-function setSlider(k,val,min,max){
-  const s=$("s-"+k); s.min=min; s.max=max; s.value=val;
-  paintSlider(s); $("v-"+k).textContent=Number(val).toFixed(1);
-}
-function paintSlider(s){
+function paintSlider(){
+  const s=$("slider");
   const pct=((s.value-s.min)/(s.max-s.min))*100;
   s.style.setProperty("--fill",pct+"%");
 }
-["pts","reb","ast"].forEach(k=>{
-  document.addEventListener("input",e=>{
-    if(e.target && e.target.id==="s-"+k){
-      paintSlider(e.target);
-      $("v-"+k).textContent=Number(e.target.value).toFixed(1);
-    }
-  });
-});
+function updateVal(){
+  const q=questions[qi], cfg=STATS[q.stat];
+  $("s-val").textContent=fmt(+$("slider").value, "");
+}
+$("slider").addEventListener("input",()=>{ paintSlider(); updateVal(); });
+
 function lockIn(){
   if(locked) return; locked=true;
   clearInterval(timerId);
   const el=(Date.now()-tStart)/1000;
   const timeFrac=Math.max(0,1-el/TIME_LIMIT);
-  const p=players[qi];
-  const g={pts:+$("s-pts").value, reb:+$("s-reb").value, ast:+$("s-ast").value};
-  const a={pts:p.pts, reb:p.reb, ast:p.ast};
-  const per={};
-  let qscore=0;
-  ["pts","reb","ast"].forEach(k=>{
-    const diff=Math.abs(g[k]-a[k]);
-    const s=statScore(g[k],a[k],timeFrac);
-    per[k]={guess:g[k],act:a[k],diff,score:s};
-    qscore+=s;
-  });
-  results.push({player:p,per,qscore,timeFrac});
-  showReveal(p,per,qscore,qi);
-}
-function showReveal(p,per,qscore,i){
-  $("rev-head").textContent="QUESTION "+(i+1)+"/5";
+  const q=questions[qi], p=q.player, cfg=STATS[q.stat];
+  const guess=+$("slider").value, actual=p[q.stat];
+  const diff=Math.abs(guess-actual);
+  const score=statScore(guess,actual,cfg.k,timeFrac);
+  results.push({q,guess,actual,diff,score});
+  $("rev-head").textContent="QUESTION "+(qi+1)+"/5";
   $("r-name").textContent=p.name;
   $("r-meta").textContent=teamLabel(p.team)+" · "+p.season+" season";
-  const lbl={pts:"PTS",reb:"REB",ast:"AST"};
-  $("rev-rows").innerHTML=["pts","reb","ast"].map(k=>{
-    const r=per[k];
-    return `<div class="rev-row"><span class="rev-lbl">${lbl[k]}</span>
-      <span class="rev-guess">${r.guess.toFixed(1)}</span><span class="rev-arrow">→</span>
-      <span class="rev-act">${r.act.toFixed(1)}</span>
-      <span class="rev-pts ${cls(r.diff)}">+${r.score}</span></div>`;
-  }).join("");
-  $("rev-qscore").textContent=qscore;
-  $("btn-next").textContent = i<4 ? "Next Player →" : "See Results 🏁";
+  $("r-statlbl").textContent=cfg.short;
+  $("r-guess").textContent=fmt(guess,cfg.suffix);
+  $("r-act").textContent=fmt(actual,cfg.suffix);
+  const rp=$("r-pts"); rp.textContent="+"+score; rp.className="rev-pts "+cls(diff);
+  const dl=diff.toFixed(1)+cfg.suffix;
+  $("r-note").textContent = diff<=1 ? `Nailed it — off by ${dl}.` :
+    diff<=2.5 ? `Close — off by ${dl}.` : `Off by ${dl}. Tough one.`;
+  $("btn-next").textContent = qi<4 ? "Next →" : "See Results 🏁";
   show("screen-reveal");
 }
 function nextStep(){
@@ -344,30 +348,31 @@ function nextStep(){
 /* ---------- results + share card ---------- */
 function shareText(){
   const dstr=todayStr(), n=puzzleNum(dstr);
-  const total=results.reduce((t,r)=>t+r.qscore,0);
+  const total=results.reduce((t,r)=>t+r.score,0);
   const [title,emoji]=rankFor(total);
   const head = mode==="daily" ? `STATLINE #${n} 🏀` : `STATLINE practice 🏀`;
-  const grid = results.map(r=>["pts","reb","ast"].map(k=>square(r.per[k].diff)).join("")).join("\n");
+  const lines = results.map(r=>{
+    const cfg=STATS[r.q.stat];
+    return `${square(r.diff)} ${r.q.player.name} ${r.q.player.season} ${cfg.short}`;
+  }).join("\n");
   const streak = mode==="daily" ? `\n🔥 ${getStreak()}-day streak` : "";
-  return `${head}\n${grid}\n${total.toLocaleString()} pts — ${title} ${emoji}${streak}`;
+  return `${head}\n${lines}\n${total} pts — ${title} ${emoji}${streak}`;
 }
 function finishGame(){
-  const total=results.reduce((t,r)=>t+r.qscore,0);
+  const total=results.reduce((t,r)=>t+r.score,0);
   const [title,emoji]=rankFor(total);
   const dstr=todayStr();
   if(mode==="daily"){
-    // streak bookkeeping
     const last=localStorage.getItem("sl_last");
     const y=new Date(); y.setDate(y.getDate()-1);
-    const ystr=todayStr(y);
     let st=getStreak();
-    st = (last===ystr) ? st+1 : (last===dstr ? st : 1);
+    st = (last===todayStr(y)) ? st+1 : (last===dstr ? st : 1);
     localStorage.setItem("sl_streak",String(st));
     localStorage.setItem("sl_last",dstr);
     localStorage.setItem("sl_daily_"+dstr,JSON.stringify({total,title}));
   }
-  $("res-mode").textContent=(mode==="daily"?"DAILY · #"+puzzleNum(dstr):"PRACTICE")+" · "+SEASON_LABEL;
-  $("res-score").textContent=total.toLocaleString();
+  $("res-mode").textContent=(mode==="daily"?"DAILY · #"+puzzleNum(dstr):"PRACTICE")+" · 2010–2026";
+  $("res-score").textContent=total;
   $("res-rank").textContent=title+" "+emoji;
   $("sharebox").textContent=shareText();
   $("res-streak-line").textContent = mode==="daily"
