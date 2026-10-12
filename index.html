@@ -101,6 +101,15 @@
   .tier-dot{width:14px;height:14px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor;}
   .tier-name{font-weight:800;letter-spacing:.06em;}
   .tier-cut{margin-left:auto;color:var(--dim);font-variant-numeric:tabular-nums;font-size:13px;}
+  .page-title{text-align:center;font-size:30px;font-weight:900;letter-spacing:.1em;margin:8px 0 18px;}
+  .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 8px;text-align:center;}
+  .recent-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px;}
+  .recent-row:last-child{border-bottom:none;}
+  .recent-date{color:var(--dim);font-variant-numeric:tabular-nums;}
+  .recent-tier{font-weight:800;letter-spacing:.05em;font-size:13px;}
+  .recent-total{margin-left:auto;font-weight:800;font-variant-numeric:tabular-nums;}
+  .tier-bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px;}
+  .tier-bar > div{height:100%;border-radius:99px;}
 </style>
 </head>
 <body>
@@ -121,6 +130,7 @@
 
     <button class="btn btn-p" id="btn-daily">▶&nbsp; Play Daily</button>
     <button class="btn btn-s" id="btn-practice">Practice Mode</button>
+    <button class="btn btn-s" id="btn-stats">My Stats</button>
 
     <div class="card">
       <div class="stat-lbl" style="margin-bottom:12px">Gem tiers — lowest total wins</div>
@@ -130,9 +140,9 @@
     <div class="card howto">
       <b>How it works.</b> Each question gives you a <b>player + season</b> and asks for <b>one stat</b> —
       PTS, REB, AST, FG%, 3P% or FT%. Drag the slider to your guess.
-      Scoring is simple: every point you're off adds to your total. <b>Lowest total wins.</b>
-      Finish close enough and you earn a <b>gem tier</b> — up to Pink Diamond, with its own tier for a perfect round.
-      15 seconds each — no time to Google.
+      Every point you're off adds to your total — <b>lowest total wins.</b>
+      Beat the cutoffs to earn <b>Bronze, Silver, Gold or Diamond.</b>
+      A perfect round gets the <b>Perfect</b> tier. 15 seconds per question.
     </div>
     <p class="fine">Same 5 questions for everyone, every day.<br>Share your card. Settle the debate.</p>
   </section>
@@ -194,6 +204,32 @@
     <p class="fine" id="res-streak-line"></p>
   </section>
 
+  <!-- STATS -->
+  <section id="screen-stats" class="screen hidden">
+    <div class="logo">STATLINE</div>
+    <h2 class="page-title">MY STATS</h2>
+    <div class="card">
+      <div class="stats-grid">
+        <div><div class="stat-num" id="st-rounds">0</div><div class="stat-lbl">Rounds</div></div>
+        <div><div class="stat-num" id="st-best">–</div><div class="stat-lbl">Best</div></div>
+        <div><div class="stat-num" id="st-avg">–</div><div class="stat-lbl">Average</div></div>
+        <div><div class="stat-num" id="st-streak">0</div><div class="stat-lbl">Day streak</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="stat-lbl" style="margin-bottom:10px">Tier breakdown</div>
+      <div id="stats-tiers"></div>
+    </div>
+    <div class="card">
+      <div class="stat-lbl" style="margin-bottom:10px">Recent rounds</div>
+      <div id="stats-recent"></div>
+    </div>
+    <canvas id="statcard" width="1080" height="1380" style="width:100%;border-radius:14px;border:1px solid var(--line);margin-bottom:14px;"></canvas>
+    <button class="btn btn-p" id="btn-stat-img">Save Stats Image</button>
+    <button class="btn btn-s btn-sm" id="btn-stat-copy">Copy Stats Text</button>
+    <button class="btn btn-s btn-sm" id="btn-stats-back">Back</button>
+  </section>
+
 </div>
 
 <script src="data1.js"></script>
@@ -216,15 +252,11 @@ const TIME_LIMIT = 15;
 
 /* ---------- gem tiers: total off (lower = better) ---------- */
 const TIERS=[
-  {max:0,   name:"PERFECT",      color:"#ffffff"},
-  {max:1,   name:"PINK DIAMOND", color:"#ff2e88"},
-  {max:3,   name:"DIAMOND",      color:"#7dd7ff"},
-  {max:6,   name:"AMETHYST",     color:"#a55eea"},
-  {max:10,  name:"EMERALD",      color:"#2ed573"},
-  {max:15,  name:"SAPPHIRE",     color:"#2e7dff"},
-  {max:22,  name:"GOLD",         color:"#ffc93c"},
-  {max:32,  name:"SILVER",       color:"#b8c0cc"},
-  {max:1e9, name:"BRONZE",       color:"#c07a3e"},
+  {max:0,   name:"PERFECT", color:"#ffffff"},
+  {max:5,   name:"DIAMOND", color:"#7dd7ff"},
+  {max:12,  name:"GOLD",    color:"#ffc93c"},
+  {max:22,  name:"SILVER",  color:"#b8c0cc"},
+  {max:1e9, name:"BRONZE",  color:"#c07a3e"},
 ];
 function tierFor(total){ return TIERS.find(t=>total<=t.max); }
 
@@ -259,7 +291,7 @@ function puzzleNum(dstr){
 function strokes(diff){ return Math.round(diff*10)/10; }
 function square(diff){ return diff<=1 ? "🟩" : diff<=2.5 ? "🟨" : "🟥"; }
 function cls(diff){ return diff<=1 ? "g" : diff<=2.5 ? "y" : "r"; }
-function getBest(){ const b=parseFloat(localStorage.getItem("sl_best")||"0"); return b>0?b:null; }
+function getBest(){ const v=localStorage.getItem("sl_best"); return v===null?null:parseFloat(v); }
 function fmt(v,suffix){ return v.toFixed(1)+suffix; }
 
 /* ---------- state ---------- */
@@ -268,9 +300,20 @@ let timerId=null, tStart=0, locked=false;
 
 /* ---------- screens ---------- */
 function show(id){
-  ["screen-home","screen-game","screen-reveal","screen-results"].forEach(s=>$(s).classList.add("hidden"));
+  ["screen-home","screen-game","screen-reveal","screen-results","screen-stats"].forEach(s=>$(s).classList.add("hidden"));
   $(id).classList.remove("hidden");
   window.scrollTo(0,0);
+}
+
+/* ---------- career history (daily only) ---------- */
+function getHistory(){
+  try{ return JSON.parse(localStorage.getItem("sl_history")||"[]"); }
+  catch(e){ return []; }
+}
+function saveRound(dstr,total){
+  const h=getHistory().filter(r=>r.d!==dstr);
+  h.push({d:dstr,total:Math.round(total*10)/10,tier:tierFor(total).name});
+  localStorage.setItem("sl_history",JSON.stringify(h.slice(-365)));
 }
 
 /* ---------- home ---------- */
@@ -391,6 +434,7 @@ function finishGame(){
     localStorage.setItem("sl_last",dstr);
     if(prevBest===null || total<prevBest){ localStorage.setItem("sl_best",String(total)); newBest=true; }
     localStorage.setItem("sl_daily_"+dstr,JSON.stringify({total}));
+    saveRound(dstr,total);
   }
   $("res-mode").textContent=(mode==="daily"?"DAILY · #"+puzzleNum(dstr):"PRACTICE")+" · 2010–2026";
   drawCard();
@@ -473,9 +517,115 @@ function hexA(hex,a){
   return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
 }
 
+/* ---------- my stats ---------- */
+function renderStats(){
+  const h=getHistory();
+  const best=getBest();
+  $("st-rounds").textContent=h.length;
+  $("st-best").textContent=best!==null?best.toFixed(1):"–";
+  $("st-avg").textContent=h.length?(Math.round(h.reduce((t,r)=>t+r.total,0)/h.length*10)/10).toFixed(1):"–";
+  $("st-streak").textContent=getStreak();
+  const counts={}; TIERS.forEach(t=>counts[t.name]=0);
+  h.forEach(r=>{ if(counts[r.tier]!==undefined) counts[r.tier]++; });
+  const maxC=Math.max(1,...Object.values(counts));
+  $("stats-tiers").innerHTML=TIERS.map(t=>{
+    const c=counts[t.name], w=Math.round(c/maxC*100);
+    return `<div style="padding:7px 0;border-bottom:1px solid var(--line)">`+
+      `<div class="tier-row" style="border:none;padding:0"><span class="tier-dot" style="background:${t.color};color:${t.color}"></span>`+
+      `<span class="tier-name" style="color:${t.color}">${t.name}</span>`+
+      `<span class="tier-cut">× ${c}</span></div>`+
+      `<div class="tier-bar"><div style="width:${w}%;background:${t.color}"></div></div></div>`;
+  }).join("");
+  const recent=h.slice(-8).reverse();
+  $("stats-recent").innerHTML=recent.length?recent.map(r=>{
+    const t=TIERS.find(x=>x.name===r.tier)||TIERS[TIERS.length-1];
+    return `<div class="recent-row"><span class="tier-dot" style="background:${t.color};color:${t.color};width:11px;height:11px"></span>`+
+      `<span class="recent-date">${r.d.slice(5)}</span>`+
+      `<span class="recent-tier" style="color:${t.color}">${r.tier}</span>`+
+      `<span class="recent-total">${r.total.toFixed(1)}</span></div>`;
+  }).join(""):'<div class="fine">No rounds yet — play today\'s daily.</div>';
+  drawStatsCard();
+  show("screen-stats");
+}
+function statsText(){
+  const h=getHistory(), best=getBest();
+  const avg=h.length?(Math.round(h.reduce((t,r)=>t+r.total,0)/h.length*10)/10).toFixed(1):"–";
+  const counts={}; TIERS.forEach(t=>counts[t.name]=0);
+  h.forEach(r=>{ if(counts[r.tier]!==undefined) counts[r.tier]++; });
+  const dist=TIERS.filter(t=>counts[t.name]>0).map(t=>`${t.name} ×${counts[t.name]}`).join(" · ");
+  return `STATLINE CAREER CARD\nRounds: ${h.length} · Best: ${best!==null?best.toFixed(1):"–"} · Avg: ${avg} · Streak: ${getStreak()}d\n${dist||"No rounds yet"}`;
+}
+function drawStatsCard(){
+  const c=$("statcard"); if(!c) return;
+  const x=c.getContext("2d"), W=1080, H=1380;
+  const h=getHistory(), best=getBest();
+  const avg=h.length?Math.round(h.reduce((t,r)=>t+r.total,0)/h.length*10)/10:null;
+  const bestTier=h.length?tierFor(Math.min(...h.map(r=>r.total))):TIERS[TIERS.length-1];
+  x.fillStyle="#0b0b10"; x.fillRect(0,0,W,H);
+  const glow=x.createRadialGradient(W/2,-200,60,W/2,-200,900);
+  glow.addColorStop(0,hexA(bestTier.color,0.18)); glow.addColorStop(1,"rgba(0,0,0,0)");
+  x.fillStyle=glow; x.fillRect(0,0,W,H);
+  x.textAlign="center"; x.fillStyle="#f4f2ec";
+  x.font="900 76px system-ui,-apple-system,sans-serif";
+  x.fillText("STATLINE", W/2, 118);
+  x.font="700 30px system-ui,-apple-system,sans-serif"; x.fillStyle="#9a97a8";
+  x.fillText("C A R E E R   C A R D", W/2, 170);
+
+  const cells=[
+    [h.length+"","ROUNDS"],[best!==null?best.toFixed(1):"–","BEST"],
+    [avg!==null?avg.toFixed(1):"–","AVERAGE"],[getStreak()+"","DAY STREAK"],
+  ];
+  cells.forEach((cell,i)=>{
+    const cx=W/4+(i%2)*(W/2), cy=i<2?330:520;
+    x.fillStyle="#f4f2ec"; x.font="900 92px system-ui,-apple-system,sans-serif";
+    x.fillText(cell[0],cx,cy);
+    x.fillStyle="#9a97a8"; x.font="700 28px system-ui,-apple-system,sans-serif";
+    x.fillText(cell[1],cx,cy+52);
+  });
+
+  x.textAlign="left"; x.fillStyle="#9a97a8"; x.font="700 28px system-ui,-apple-system,sans-serif";
+  x.fillText("TIER BREAKDOWN", 80, 660);
+  const counts={}; TIERS.forEach(t=>counts[t.name]=0);
+  h.forEach(r=>{ if(counts[r.tier]!==undefined) counts[r.tier]++; });
+  const maxC=Math.max(1,...Object.values(counts));
+  let y=700;
+  TIERS.forEach(t=>{
+    const c=counts[t.name];
+    x.fillStyle=t.color; x.beginPath(); x.arc(104,y-8,13,0,7); x.fill();
+    x.fillStyle="#f4f2ec"; x.font="800 34px system-ui,-apple-system,sans-serif";
+    x.fillText(t.name, 134, y+4);
+    x.textAlign="right"; x.fillStyle="#9a97a8"; x.font="700 32px system-ui,-apple-system,sans-serif";
+    x.fillText("× "+c, W-80, y+4); x.textAlign="left";
+    x.fillStyle="#262633";
+    x.beginPath(); x.roundRect(134,y+22,W-214,12,6); x.fill();
+    if(c>0){ x.fillStyle=t.color; x.beginPath(); x.roundRect(134,y+22,(W-214)*(c/maxC),12,6); x.fill(); }
+    y+=104;
+  });
+  x.textAlign="center"; x.fillStyle="#9a97a8"; x.font="700 30px system-ui,-apple-system,sans-serif";
+  x.fillText("DO YOU KNOW BALL?", W/2, H-52);
+}
+
 /* ---------- events ---------- */
 $("btn-daily").addEventListener("click",()=>startGame("daily"));
 $("btn-practice").addEventListener("click",()=>startGame("practice"));
+$("btn-stats").addEventListener("click",renderStats);
+$("btn-stats-back").addEventListener("click",renderHome);
+$("btn-stat-img").addEventListener("click",()=>{
+  const a=document.createElement("a");
+  a.download="statline-career-card.png";
+  a.href=$("statcard").toDataURL("image/png");
+  document.body.appendChild(a); a.click(); a.remove();
+});
+$("btn-stat-copy").addEventListener("click",async()=>{
+  const t=statsText();
+  try{ await navigator.clipboard.writeText(t); }
+  catch(e){
+    const ta=document.createElement("textarea"); ta.value=t; document.body.appendChild(ta);
+    ta.select(); document.execCommand("copy"); ta.remove();
+  }
+  const b=$("btn-stat-copy"); const old=b.innerHTML;
+  b.innerHTML="✓ Copied"; setTimeout(()=>b.innerHTML=old,1500);
+});
 $("btn-lock").addEventListener("click",lockIn);
 $("btn-next").addEventListener("click",nextStep);
 $("btn-again").addEventListener("click",()=>startGame("practice"));
