@@ -121,7 +121,7 @@
     <div class="card howto">
       <b>How it works.</b> Each question gives you a <b>player + season</b> and asks for <b>one stat</b> —
       PTS, REB, AST, FG%, 3P% or FT%. Drag the slider to your guess.
-      Scoring is golf: every point you're off is a stroke. <b>Lowest total wins.</b>
+      Scoring is simple: every point you're off adds to your total. <b>Lowest total wins.</b>
       20 seconds each — no time to Google.
     </div>
     <p class="fine">Same 5 questions for everyone, every day.<br>Share your card. Settle the debate.</p>
@@ -176,10 +176,9 @@
   <section id="screen-results" class="screen hidden">
     <div class="logo" id="res-mode">DAILY · #–</div>
     <div class="ball" style="font-size:36px">🏀</div>
-    <div class="score-big" id="res-score">0</div>
-    <div class="rank-line" id="res-rank">–</div>
-    <div class="sharebox" id="sharebox"></div>
-    <button class="btn btn-p" id="btn-copy">📋 Copy Share Card</button>
+    <canvas id="card" width="1080" height="1560" style="width:100%;border-radius:14px;border:1px solid var(--line);margin:6px 0 14px;"></canvas>
+    <button class="btn btn-p" id="btn-img">📥 Save Card Image</button>
+    <button class="btn btn-s btn-sm" id="btn-copy">📋 Copy Text Score</button>
     <button class="btn btn-s btn-sm" id="btn-again">Practice Again</button>
     <button class="btn btn-s btn-sm" id="btn-home">Home</button>
     <p class="fine" id="res-streak-line"></p>
@@ -324,7 +323,7 @@ function lockIn(){
   $("r-act").textContent=fmt(actual,cfg.suffix);
   const rp=$("r-pts"); rp.textContent="+ "+stk.toFixed(1); rp.className="rev-pts "+cls(diff);
   const dl=diff.toFixed(1)+cfg.suffix;
-  $("r-note").textContent = diff<=1 ? `Nailed it — ${dl} off the pin.` :
+  $("r-note").textContent = diff<=1 ? `Nailed it — ${dl} off.` :
     diff<=2.5 ? `Close — ${dl} off.` : `${dl} off. Tough one.`;
   $("btn-next").textContent = qi<4 ? "Next →" : "See Results 🏁";
   show("screen-reveal");
@@ -339,16 +338,14 @@ function shareText(){
   const dstr=todayStr(), n=puzzleNum(dstr);
   const total=Math.round(results.reduce((t,r)=>t+r.strokes,0)*10)/10;
   const head = mode==="daily" ? `STATLINE #${n} 🏀` : `STATLINE practice 🏀`;
-  const bestPin = Math.min(...results.map(r=>r.diff));
   const lines = results.map(r=>{
     const cfg=STATS[r.q.stat];
-    const pin = r.diff===bestPin ? "🎯" : square(r.diff);
-    return `${pin} ${r.q.player.name} ${r.q.player.season} ${cfg.short}`;
+    return `${square(r.diff)} ${r.q.player.name} ${r.q.player.season} ${cfg.short}`;
   }).join("\n");
   const best=getBest();
   const bestLine = best!==null ? ` (best: ${best.toFixed(1)})` : "";
   const streak = mode==="daily" ? `\n🔥 ${getStreak()}-day streak` : "";
-  return `${head}\n${lines}\n⛳ ${total.toFixed(1)}${bestLine}${streak}`;
+  return `${head}\n${lines}\n${total.toFixed(1)} OFF${bestLine}${streak}`;
 }
 function finishGame(){
   const total=Math.round(results.reduce((t,r)=>t+r.strokes,0)*10)/10;
@@ -366,15 +363,70 @@ function finishGame(){
     localStorage.setItem("sl_daily_"+dstr,JSON.stringify({total}));
   }
   $("res-mode").textContent=(mode==="daily"?"DAILY · #"+puzzleNum(dstr):"PRACTICE")+" · 2010–2026";
-  $("res-score").textContent="⛳ "+total.toFixed(1);
-  const bestNow=getBest();
-  $("res-rank").textContent = newBest ? "🏅 New best round!" :
-    (bestNow!==null ? `Best round: ${bestNow.toFixed(1)}` : "Lowest score wins.");
-  $("sharebox").textContent=shareText();
-  $("res-streak-line").textContent = mode==="daily"
-    ? `🔥 ${getStreak()}-day streak · New puzzle tomorrow`
-    : "Practice doesn't affect your streak or best round. Come back for the daily.";
+  drawCard();
   show("screen-results");
+}
+
+/* ---------- PNG results card ---------- */
+function drawCard(){
+  const c=$("card"), x=c.getContext("2d"), W=1080, H=1560;
+  const total=Math.round(results.reduce((t,r)=>t+r.strokes,0)*10)/10;
+  const dstr=todayStr();
+  const cols={g:"#3ddc84", y:"#ffd60a", r:"#ff4d5e"};
+
+  x.fillStyle="#0b0b10"; x.fillRect(0,0,W,H);
+  const glow=x.createRadialGradient(W/2,-240,60,W/2,-240,950);
+  glow.addColorStop(0,"rgba(255,122,26,0.22)"); glow.addColorStop(1,"rgba(255,122,26,0)");
+  x.fillStyle=glow; x.fillRect(0,0,W,H);
+
+  x.textAlign="center"; x.fillStyle="#f4f2ec";
+  x.font="900 80px system-ui,-apple-system,sans-serif";
+  x.fillText("🏀 STATLINE", W/2, 128);
+  x.font="700 30px system-ui,-apple-system,sans-serif"; x.fillStyle="#9a97a8";
+  x.fillText((mode==="daily" ? "DAILY #"+puzzleNum(dstr) : "PRACTICE")+" · "+dstr+" · 2010–2026 SEASONS", W/2, 182);
+
+  x.fillStyle="#f4f2ec"; x.font="900 210px system-ui,-apple-system,sans-serif";
+  x.fillText(total.toFixed(1), W/2, 392);
+  x.font="700 32px system-ui,-apple-system,sans-serif"; x.fillStyle="#9a97a8";
+  x.fillText("T O T A L   O F F", W/2, 448);
+  const best=getBest();
+  if(best!==null){
+    x.font="700 30px system-ui,-apple-system,sans-serif"; x.fillStyle="#ffb03a";
+    x.fillText("BEST ROUND  "+best.toFixed(1), W/2, 500);
+  }
+
+  let y=556;
+  results.forEach(r=>{
+    const cfg=STATS[r.q.stat], col=cols[cls(r.diff)], p=r.q.player;
+    x.fillStyle="#14141c";
+    x.beginPath(); x.roundRect(60,y,W-120,164,28); x.fill();
+    x.fillStyle=col;
+    x.beginPath(); x.roundRect(60,y,14,164,[28,0,0,28]); x.fill();
+
+    x.fillStyle="#1b1b25"; x.beginPath(); x.arc(168,y+82,54,0,7); x.fill();
+    x.strokeStyle=col; x.lineWidth=6; x.beginPath(); x.arc(168,y+82,54,0,7); x.stroke();
+    const initials=p.name.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+    x.fillStyle="#f4f2ec"; x.font="800 42px system-ui,-apple-system,sans-serif"; x.textAlign="center";
+    x.fillText(initials,168,y+97);
+
+    x.textAlign="left"; x.fillStyle="#f4f2ec"; x.font="800 44px system-ui,-apple-system,sans-serif";
+    const nm=p.name.toUpperCase();
+    x.fillText(nm.length>17?nm.slice(0,17)+"…":nm, 248, y+70);
+    x.fillStyle="#9a97a8"; x.font="700 29px system-ui,-apple-system,sans-serif";
+    x.fillText(p.season+"  ·  "+cfg.label.toUpperCase(), 248, y+116);
+
+    x.textAlign="right"; x.fillStyle="#f4f2ec"; x.font="800 42px system-ui,-apple-system,sans-serif";
+    x.fillText(fmt(r.guess,cfg.suffix), W-104, y+66);
+    x.fillStyle=col;
+    x.fillText("→ "+fmt(r.actual,cfg.suffix), W-104, y+112);
+    x.font="800 29px system-ui,-apple-system,sans-serif";
+    x.fillText(r.diff.toFixed(1)+" OFF", W-104, y+148);
+    y+=184;
+  });
+
+  x.textAlign="center"; x.fillStyle="#9a97a8"; x.font="700 30px system-ui,-apple-system,sans-serif";
+  const st = mode==="daily" ? "🔥 "+getStreak()+"-DAY STREAK    ·    " : "";
+  x.fillText(st+"DO YOU KNOW BALL?", W/2, H-52);
 }
 
 /* ---------- events ---------- */
@@ -384,6 +436,15 @@ $("btn-lock").addEventListener("click",lockIn);
 $("btn-next").addEventListener("click",nextStep);
 $("btn-again").addEventListener("click",()=>startGame("practice"));
 $("btn-home").addEventListener("click",renderHome);
+$("btn-img").addEventListener("click",()=>{
+  const a=document.createElement("a");
+  const dstr=todayStr();
+  a.download="statline-"+(mode==="daily" ? "daily-"+puzzleNum(dstr) : "practice")+".png";
+  a.href=$("card").toDataURL("image/png");
+  document.body.appendChild(a); a.click(); a.remove();
+  const b=$("btn-img"); const old=b.innerHTML;
+  b.innerHTML="✓ Saved — go post it"; setTimeout(()=>b.innerHTML=old,1800);
+});
 $("btn-copy").addEventListener("click",async()=>{
   const t=shareText();
   try{ await navigator.clipboard.writeText(t); }
