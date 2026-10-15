@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0b0b10">
-<title>Batter's View — Concept Mockup</title>
+<title>Batter's View — v2 Concept Mockup</title>
 <style>
   :root{ --bg:#0b0b10; --txt:#f4f2ec; --dim:#9a97a8; --acc:#ff7a1a; }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
@@ -22,14 +22,14 @@
 <body>
 <div id="wrap">
   <div id="cvwrap"><canvas id="cv"></canvas></div>
-  <p class="cap">First-person batter's-box concept — look &amp; feel only.<br><b>Tap the frame</b> to throw the next pitch early.</p>
+  <p class="cap">Low batter's-box POV — v2 look &amp; feel only.<br><b>Tap the frame</b> to skip to the next pitch.</p>
 </div>
 <script>
 "use strict";
-/* ============ Batter's-view concept mockup (no game logic) ============ */
+/* ============ Batter's-view v2: low box POV (no game logic) ============ */
 const cv = document.getElementById("cv");
 const ctx = cv.getContext("2d");
-const LW = 420, LH = 760;               // logical portrait frame
+const LW = 420, LH = 760;
 let DPR = 1;
 
 const ACC = "#ff7a1a", TXT = "#f4f2ec", DIM = "#9a97a8";
@@ -42,104 +42,215 @@ function sizeCanvas(){
 window.addEventListener("resize", sizeCanvas);
 sizeCanvas();
 
-/* ---------- pitch choreography ---------- */
-const PITCHES = [
-  { label:"FF", velo:"98", dur:450, startX:  6, endX: 18,  drop:  6, col:ACC },   // fastball: straight, quick
-  { label:"SL", velo:"87", dur:640, startX: 26, endX:-42,  drop: 26, col:"#7dd7ff" }, // slider: late sweep
-];
-let pitchNo = 0;                 // alternates FF / SL
-let phase = "idle";              // idle | windup | flight | flash | settle
-let phaseT0 = 0, flashT0 = 0;
-let trail = [];
 const now = () => performance.now();
 
-function startWindup(quick){
-  phase = "windup"; phaseT0 = now();
-  trail = [];
-  windupMs = quick ? 260 : 800;
-}
-let windupMs = 800;
-function startFlight(){
-  phase = "flight"; phaseT0 = now();
-  trail = [];
-}
-function startFlash(){
-  phase = "flash"; flashT0 = now();
-}
-function current(){ return PITCHES[pitchNo % PITCHES.length]; }
+/* ---------- geometry (low, offset camera) ---------- */
+const MX = 185, MY = 352;      // mound: pitcher's feet
+const PX = 258, PY = 688;      // home plate center (near foreground, right of center)
+const REL = [MX + 12, MY - 42]; // release point = hand at release keyframe (197, 310)
+const PLATE_X = 252, PLATE_Y = 648; // where pitches cross
+
+/* ---------- pitch script: whiff / take / contact rotation ---------- */
+const SCRIPT = [
+  { label:"FF", velo:"98", flight:460, breakX:  10, breakY:  8, outcome:"whiff" },
+  { label:"SL", velo:"88", flight:620, breakX: -66, breakY: 20, outcome:"take" },
+  { label:"FF", velo:"97", flight:470, breakX:  14, breakY:  8, outcome:"contact", kind:"liner", to:[344, 200], tag:"LINE DRIVE — GAP" },
+  { label:"CB", velo:"82", flight:700, breakX:  42, breakY: 36, outcome:"contact", kind:"fly",   to:[116, 168], tag:"DEEP FLY — WARNING TRACK" },
+];
+const T_LOOK = 1500, T_WIND = 750, T_THROW = 340, T_REL = 210, T_RESET = 1300;
+
+let idx = 0, t0 = 0;
+let trail = [];
+function startPitch(){ t0 = now(); trail = []; }
+startPitch();
 
 cv.addEventListener("pointerdown", e => {
   e.preventDefault();
-  if (phase === "idle" || phase === "windup" || phase === "settle") startWindup(true);
+  idx++; startPitch();
 });
 
-/* ---------- scene drawing ---------- */
-function drawBG(){
-  const g = ctx.createLinearGradient(0, 0, 0, LH);
-  g.addColorStop(0, "#08080d"); g.addColorStop(0.45, "#0e0e15"); g.addColorStop(1, "#0b0b10");
-  ctx.fillStyle = g; ctx.fillRect(0, 0, LW, LH);
-  // stadium glow on horizon
-  const rg = ctx.createRadialGradient(LW/2, 200, 10, LW/2, 200, 300);
-  rg.addColorStop(0, "rgba(255,122,26,0.10)"); rg.addColorStop(1, "rgba(255,122,26,0)");
-  ctx.fillStyle = rg; ctx.fillRect(0, 0, LW, LH);
-  // foul lines converging to the mound
-  ctx.strokeStyle = "rgba(244,242,236,0.07)"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(LW/2, 660); ctx.lineTo(40, 250); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(LW/2, 660); ctx.lineTo(LW-40, 250); ctx.stroke();
+/* ---------- helpers ---------- */
+function sstep(u){ u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); }
+function sampleKeys(keys, t){
+  if (t <= keys[0][0]) return [keys[0][1], keys[0][2]];
+  for (let i = 1; i < keys.length; i++){
+    if (t <= keys[i][0]){
+      const a = keys[i-1], b = keys[i];
+      const u = sstep((t - a[0]) / (b[0] - a[0]));
+      return [a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u];
+    }
+  }
+  const l = keys[keys.length - 1]; return [l[1], l[2]];
+}
+// deterministic speckles (no shimmer)
+const speck = [];
+(function(){
+  let s = 1234567;
+  const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  for (let i = 0; i < 60; i++) speck.push([rnd() * LW, 360 + rnd() * 390, 1 + rnd() * 2.2, rnd()]);
+})();
+
+/* ---------- static scene ---------- */
+function drawSky(){
+  const g = ctx.createLinearGradient(0, 0, 0, 190);
+  g.addColorStop(0, "#060609"); g.addColorStop(1, "#0c0c13");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, LW, 190);
+  // stadium light glow
+  const rg = ctx.createRadialGradient(LW/2, 96, 8, LW/2, 96, 230);
+  rg.addColorStop(0, "rgba(255,190,120,0.10)"); rg.addColorStop(1, "rgba(255,190,120,0)");
+  ctx.fillStyle = rg; ctx.fillRect(0, 0, LW, 220);
+  // light towers
+  [[58, 46], [362, 38]].forEach(([x, y]) => {
+    ctx.strokeStyle = "rgba(244,242,236,0.14)"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, 108); ctx.stroke();
+    ctx.fillStyle = "rgba(255,220,170,0.5)";
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++){
+      ctx.beginPath(); ctx.arc(x - 9 + c * 9, y - 8 + r * 9, 2.4, 0, 7); ctx.fill();
+    }
+    const gl = ctx.createRadialGradient(x, y - 4, 2, x, y - 4, 46);
+    gl.addColorStop(0, "rgba(255,210,150,0.20)"); gl.addColorStop(1, "rgba(255,210,150,0)");
+    ctx.fillStyle = gl; ctx.fillRect(x - 50, y - 54, 100, 100);
+  });
+  // faint crowd band
+  ctx.fillStyle = "rgba(244,242,236,0.045)";
+  for (let y = 104; y < 148; y += 9) ctx.fillRect(0, y, LW, 3);
 }
 
-function drawMound(bob){
-  // mound silhouette
-  ctx.fillStyle = "#14141c";
-  ctx.beginPath(); ctx.ellipse(LW/2, 218, 52, 15, 0, 0, 7); ctx.fill();
-  ctx.strokeStyle = "rgba(255,122,26,0.25)"; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.ellipse(LW/2, 214, 52, 15, 0, Math.PI, 2*Math.PI); ctx.stroke();
-  // rubber
-  ctx.fillStyle = "rgba(244,242,236,0.5)";
-  ctx.fillRect(LW/2 - 9, 208, 18, 4);
-  // pitcher silhouette (abstract), bobs during windup
-  const y = 150 + bob;
-  ctx.fillStyle = "#1b1b25";
-  ctx.beginPath(); ctx.arc(LW/2, y, 11, 0, 7); ctx.fill();                    // head
-  ctx.beginPath();                                                              // torso
-  ctx.moveTo(LW/2 - 13, y + 12); ctx.lineTo(LW/2 + 13, y + 12);
-  ctx.lineTo(LW/2 + 17, y + 44); ctx.lineTo(LW/2 - 17, y + 44);
+function drawWall(){
+  ctx.fillStyle = "#12241a"; ctx.fillRect(0, 150, LW, 34);
+  ctx.fillStyle = "rgba(255,200,60,0.28)"; ctx.fillRect(0, 150, LW, 2.5); // yellow line
+  const ads = ["#1b3a2c", "#243b2a", "#1b3a34", "#2c3a1e", "#1e2c3a"];
+  for (let i = 0; i < 5; i++){
+    ctx.fillStyle = ads[i]; ctx.globalAlpha = 0.55;
+    ctx.fillRect(14 + i * 82, 158, 66, 20);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawGrass(){
+  const g = ctx.createLinearGradient(0, 184, 0, 352);
+  g.addColorStop(0, "#0e1c11"); g.addColorStop(1, "#1e3d27");
+  ctx.fillStyle = g; ctx.fillRect(0, 184, LW, 168);
+  ctx.fillStyle = "rgba(255,255,255,0.028)"; // mow stripes
+  for (let y = 190; y < 350; y += 30) ctx.fillRect(0, y, LW, 13);
+}
+
+function drawMoundDirt(){
+  ctx.fillStyle = "#3c2a18";
+  ctx.beginPath(); ctx.ellipse(MX, MY + 2, 48, 13, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#4a3520";
+  ctx.beginPath(); ctx.ellipse(MX, MY - 1, 48, 12, 0, Math.PI, 2 * Math.PI); ctx.fill();
+  ctx.fillStyle = "rgba(244,242,236,0.55)"; // rubber
+  ctx.fillRect(MX - 9, MY - 8, 18, 4);
+}
+
+function drawForeDirt(){
+  const g = ctx.createLinearGradient(0, 352, 0, LH);
+  g.addColorStop(0, "#33220f"); g.addColorStop(0.5, "#2a1c10"); g.addColorStop(1, "#1d130a");
+  ctx.fillStyle = g; ctx.fillRect(0, 352, LW, LH - 352);
+  ctx.fillStyle = "rgba(0,0,0,0.20)";
+  for (const [x, y, r, a] of speck){
+    ctx.globalAlpha = 0.10 + a * 0.12;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // foul lines converging out
+  ctx.strokeStyle = "rgba(244,242,236,0.10)"; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(PX, PY - 10); ctx.lineTo(28, 196); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PX, PY - 10); ctx.lineTo(398, 192); ctx.stroke();
+}
+
+function drawChalk(){
+  ctx.strokeStyle = "rgba(244,242,236,0.55)"; ctx.lineWidth = 3; ctx.lineCap = "round";
+  // batter's box in perspective (offset, low camera)
+  ctx.beginPath(); ctx.moveTo(95, LH); ctx.lineTo(185, 505); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(362, LH); ctx.lineTo(312, 492); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(185, 505); ctx.lineTo(312, 492); ctx.stroke();
+}
+
+function drawPlate(){
+  const w = 38;
+  ctx.fillStyle = "#e8e6df";
+  ctx.beginPath();
+  ctx.moveTo(PX - w, PY - 12); ctx.lineTo(PX + w, PY - 12);
+  ctx.lineTo(PX + w, PY + 4); ctx.lineTo(PX, PY + 18); ctx.lineTo(PX - w, PY + 4);
   ctx.closePath(); ctx.fill();
-  ctx.fillRect(LW/2 - 12, y + 44, 9, 22); ctx.fillRect(LW/2 + 3, y + 44, 9, 22); // legs
-  // rim light
-  ctx.strokeStyle = "rgba(255,122,26,0.55)"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(LW/2, y, 11, -1.1, 0.6); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(LW/2 + 13, y + 12); ctx.lineTo(LW/2 + 17, y + 44); ctx.stroke();
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillRect(PX - w, PY - 12, w * 2, 4);
+  ctx.strokeStyle = "rgba(255,122,26,0.30)"; ctx.lineWidth = 1.5;
+  ctx.stroke();
 }
 
-function drawZone(bright){
-  const cx = LW/2, w = 96, h = 122, y = 560 - h/2;
+function drawZone(hot){
   ctx.save();
-  ctx.setLineDash([7, 7]);
-  ctx.strokeStyle = bright ? "rgba(244,242,236,0.5)" : "rgba(244,242,236,0.22)";
+  ctx.setLineDash([6, 6]);
+  ctx.strokeStyle = hot ? "rgba(244,242,236,0.55)" : "rgba(244,242,236,0.20)";
   ctx.lineWidth = 2;
-  ctx.strokeRect(cx - w/2, y, w, h);
+  ctx.strokeRect(PLATE_X - 34, 566, 68, 88);
   ctx.restore();
 }
 
-function drawPlateAndBox(){
-  const cx = LW/2, py = 648;
-  // batter's-box chalk lines in perspective
-  ctx.strokeStyle = "rgba(244,242,236,0.5)"; ctx.lineWidth = 3; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(108, LH); ctx.lineTo(148, 592); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(LW-108, LH); ctx.lineTo(LW-148, 592); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(148, 592); ctx.lineTo(LW-148, 592); ctx.stroke();
-  // home plate pentagon
-  const pw = 34;
-  ctx.fillStyle = "#e8e6df";
-  ctx.beginPath();
-  ctx.moveTo(cx - pw, py); ctx.lineTo(cx + pw, py);
-  ctx.lineTo(cx + pw, py + 14); ctx.lineTo(cx, py + 26); ctx.lineTo(cx - pw, py + 14);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "rgba(0,0,0,0.25)";
-  ctx.fillRect(cx - pw, py, pw*2, 3);
+/* ---------- pitcher rig ---------- */
+const WINDUP_KEYS = [[0, MX + 16, MY - 30], [T_WIND, MX + 8, MY - 54]];
+const THROW_KEYS  = [
+  [0, MX + 8, MY - 54], [90, MX + 30, MY - 70],
+  [T_REL, REL[0], REL[1]], [T_THROW, MX - 16, MY - 22]
+];
+
+function drawMiniBall(x, y, r){
+  ctx.save();
+  ctx.shadowColor = "rgba(255,255,255,0.6)"; ctx.shadowBlur = 8;
+  ctx.fillStyle = "#f4f2ec";
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.restore();
 }
 
+function drawPitcher(st){
+  // st: {hand:[x,y], lift, crouch, gloveTap, ballIn: 'glove'|'hand'|null}
+  const hipY = MY - 36 + st.crouch, shY = MY - 54 + st.crouch;
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.beginPath(); ctx.ellipse(MX, MY + 5, 26, 7, 0, 0, 7); ctx.fill();
+
+  ctx.strokeStyle = "#14141b"; ctx.lineCap = "round";
+  ctx.lineWidth = 7; // back leg
+  ctx.beginPath(); ctx.moveTo(MX, hipY); ctx.lineTo(MX - 11, MY); ctx.stroke();
+  const fx = MX + 14 + 10 * st.lift, fy = MY - 36 * st.lift; // front leg
+  ctx.beginPath(); ctx.moveTo(MX, hipY); ctx.lineTo(fx, fy); ctx.stroke();
+
+  ctx.fillStyle = "#17171f"; // torso
+  ctx.beginPath();
+  ctx.moveTo(MX - 10, shY); ctx.lineTo(MX + 10, shY);
+  ctx.lineTo(MX + 8, hipY); ctx.lineTo(MX - 8, hipY);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.arc(MX + 1, shY - 13, 7, 0, 7); ctx.fill(); // head
+
+  ctx.strokeStyle = "rgba(255,122,26,0.5)"; ctx.lineWidth = 1.6; // rim light
+  ctx.beginPath(); ctx.arc(MX + 1, shY - 13, 7, -1.2, 0.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(MX + 10, shY); ctx.lineTo(MX + 8, hipY); ctx.stroke();
+
+  const gx = MX - 17, gy = shY + 12 - (st.gloveTap ? 8 : 0); // glove
+  ctx.strokeStyle = "#14141b"; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(MX - 8, shY + 2); ctx.lineTo(gx, gy); ctx.stroke();
+  ctx.fillStyle = "#0f0f15";
+  ctx.beginPath(); ctx.arc(gx, gy, 8, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(255,122,26,0.35)"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(gx, gy, 8, 0, 7); ctx.stroke();
+
+  const [hx, hy] = st.hand; // throwing arm
+  ctx.strokeStyle = "#14141b"; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(MX + 8, shY + 2); ctx.lineTo(hx, hy); ctx.stroke();
+
+  if (st.ballIn === "glove") drawMiniBall(gx, gy - 3, 3);
+  else if (st.ballIn === "hand") drawMiniBall(hx, hy, 3);
+
+  return { gx, gy, hx, hy };
+}
+
+function setPose(tap){
+  return { hand:[MX + 16, MY - 30], lift:0, crouch:0, gloveTap:tap, ballIn:"glove" };
+}
+
+/* ---------- ball ---------- */
 function drawBall(x, y, r){
   ctx.save();
   ctx.shadowColor = "rgba(255,255,255,0.55)"; ctx.shadowBlur = 14;
@@ -147,105 +258,173 @@ function drawBall(x, y, r){
   ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
   ctx.restore();
   ctx.strokeStyle = "#c8321e"; ctx.lineWidth = Math.max(1, r * 0.1);
-  ctx.beginPath(); ctx.arc(x - r*0.35, y, r*0.72, -0.9, 0.9); ctx.stroke();
-  ctx.beginPath(); ctx.arc(x + r*0.35, y, r*0.72, Math.PI - 0.9, Math.PI + 0.9); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x - r * 0.35, y, r * 0.72, -0.9, 0.9); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x + r * 0.35, y, r * 0.72, Math.PI - 0.9, Math.PI + 0.9); ctx.stroke();
 }
 
-function drawTrail(){
+function drawTrail(alpha){
   for (let i = 0; i < trail.length; i++){
-    const t = trail[i], a = (i + 1) / trail.length * 0.32;
+    const p = trail[i], a = (i + 1) / trail.length * alpha;
     ctx.fillStyle = "rgba(244,242,236," + a.toFixed(2) + ")";
-    ctx.beginPath(); ctx.arc(t.x, t.y, t.r * 0.75, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.7, 0, 7); ctx.fill();
   }
 }
 
-function drawText(){
+function pitchBallAt(sp, p){
+  const x = REL[0] + (PLATE_X - REL[0]) * p + sp.breakX * Math.pow(p, 3);
+  const y = REL[1] + (PLATE_Y - REL[1]) * p + sp.breakY * Math.pow(p, 2.2);
+  const r = 2 + 13 * Math.pow(p, 1.7);
+  return { x, y, r };
+}
+
+function battedAt(sp, u){
+  const sx = PLATE_X, sy = 622, tx = sp.to[0], ty = sp.to[1];
+  const x = sx + (tx - sx) * u;
+  const lift = sp.kind === "fly" ? 200 : 60;
+  const y = sy + (ty - sy) * u - Math.sin(u * Math.PI) * lift;
+  const r = 14 - 11 * u;
+  return { x, y, r };
+}
+
+function drawBatStreak(a){
+  ctx.save();
+  ctx.globalAlpha = 0.9 * (1 - a);
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(255,122,26,0.45)"; ctx.lineWidth = 20;
+  ctx.beginPath(); ctx.moveTo(118, 752); ctx.quadraticCurveTo(245, 705, 378, 596); ctx.stroke();
+  ctx.strokeStyle = "#ffe2b8"; ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.moveTo(118, 752); ctx.quadraticCurveTo(245, 705, 378, 596); ctx.stroke();
+  ctx.restore();
+}
+
+function drawRing(x, y, t, col){
+  const a = 1 - t;
+  ctx.strokeStyle = col.replace("A", (a * 0.9).toFixed(2));
+  ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(x, y, 22 + t * 58, 0, 7); ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255," + (a * 0.14).toFixed(2) + ")";
+  ctx.fillRect(0, 0, LW, LH);
+}
+
+/* ---------- text ---------- */
+function drawChrome(){
   ctx.textAlign = "left"; ctx.fillStyle = TXT;
   ctx.font = "800 13px -apple-system, sans-serif";
   ctx.fillText("BATTER'S VIEW", 16, 30);
   ctx.fillStyle = DIM; ctx.font = "700 11px -apple-system, sans-serif";
-  ctx.fillText("CONCEPT MOCKUP", 16, 48);
+  ctx.fillText("V2 — LOW BOX POV", 16, 48);
   ctx.textAlign = "center"; ctx.fillStyle = "rgba(154,151,168,0.75)";
   ctx.font = "700 11px -apple-system, sans-serif";
-  ctx.fillText("TAP TO THROW", LW/2, LH - 18);
+  ctx.fillText("TAP TO SKIP", LW / 2, LH - 18);
 }
 
-function drawPitchLabel(){
-  if (phase !== "flight" && phase !== "flash") return;
-  const p = current();
+function drawPitchTag(sp){
   ctx.textAlign = "right";
-  ctx.fillStyle = p.col; ctx.font = "900 15px -apple-system, sans-serif";
-  ctx.fillText(p.label, LW - 16, 32);
+  ctx.fillStyle = "rgba(255,122,26,0.9)"; ctx.font = "900 15px -apple-system, sans-serif";
+  ctx.fillText(sp.label, LW - 16, 32);
   ctx.fillStyle = DIM; ctx.font = "700 12px -apple-system, sans-serif";
-  ctx.fillText(p.velo + " MPH", LW - 16, 50);
+  ctx.fillText(sp.velo + " MPH", LW - 16, 50);
 }
 
-function drawFlash(){
-  const t = (now() - flashT0) / 220;   // 0..1
-  if (t >= 1) return;
-  const a = 1 - t;
-  ctx.strokeStyle = "rgba(255,176,58," + (a * 0.9).toFixed(2) + ")";
-  ctx.lineWidth = 5;
-  ctx.beginPath(); ctx.arc(LW/2, 600, 26 + t * 60, 0, 7); ctx.stroke();
-  ctx.fillStyle = "rgba(255,255,255," + (a * 0.16).toFixed(2) + ")";
-  ctx.fillRect(0, 0, LW, LH);
-}
-
-/* ball path: release -> plate, late break eased by p^3 */
-function ballAt(pitch, p){
-  const rx = LW/2, ry = 244;                       // release point
-  const ty = 600;                                  // plate crossing height
-  const x = rx + pitch.startX + (pitch.endX - pitch.startX) * Math.pow(p, 3);
-  const y = ry + (ty - ry) * p + pitch.drop * Math.pow(p, 2.4);
-  const r = 3 + 13 * Math.pow(p, 1.6);
-  return { x, y, r };
+function drawOutcome(tag, u){
+  const a = Math.sin(Math.min(1, u) * Math.PI);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, a);
+  ctx.textAlign = "center";
+  ctx.font = "900 21px -apple-system, sans-serif";
+  ctx.fillStyle = TXT;
+  ctx.shadowColor = "rgba(0,0,0,0.7)"; ctx.shadowBlur = 10;
+  ctx.fillText(tag, 210, 470);
+  ctx.restore();
 }
 
 /* ---------- main loop ---------- */
 function frame(){
-  const t = now();
-  const pitch = current();
+  const sp = SCRIPT[idx % SCRIPT.length];
+  const t = now() - t0;
 
-  // phase transitions
-  if (phase === "idle" && t - phaseT0 > 500) startWindup(false);
-  else if (phase === "windup" && t - phaseT0 > windupMs) startFlight();
-  else if (phase === "flash" && t - flashT0 > 420){
-    phase = "settle"; phaseT0 = t;
-    pitchNo++;
+  const lookEnd   = T_LOOK;
+  const windEnd   = lookEnd + T_WIND;
+  const throwEnd  = windEnd + T_THROW;
+  const relT      = lookEnd + T_WIND + T_REL;
+  const flightEnd = relT + sp.flight;
+  const outMs     = (sp.outcome === "contact" && sp.kind === "fly") ? 1500 : 1050;
+  const outEnd    = flightEnd + outMs;
+  const endT      = outEnd + T_RESET;
+
+  if (t >= endT){ idx++; startPitch(); requestAnimationFrame(frame); return; }
+
+  /* scene */
+  drawSky(); drawWall(); drawGrass(); drawMoundDirt(); drawForeDirt();
+  drawChalk(); drawPlate();
+
+  /* pitcher + ball state */
+  let pst, ballInFlight = false, ballP = 0, zoneHot = false;
+
+  if (t < lookEnd){                                   // look-in beat
+    const tap = (t > 550 && t < 950) ? Math.sin((t - 550) / 400 * Math.PI) > 0.4 : false;
+    pst = setPose(tap);
+  } else if (t < windEnd){                            // windup: leg lift, hands rise
+    const pt = (t - lookEnd) / T_WIND;
+    pst = { hand: sampleKeys(WINDUP_KEYS, t - lookEnd), lift: sstep(pt),
+            crouch: 4 * Math.sin(pt * Math.PI), gloveTap: false, ballIn: "hand" };
+  } else if (t < throwEnd){                           // throw: arm whips, release at T_REL
+    const pt = (t - windEnd) / T_THROW;
+    pst = { hand: sampleKeys(THROW_KEYS, t - windEnd), lift: Math.max(0, 1 - pt * 3),
+            crouch: 0, gloveTap: false, ballIn: (t - windEnd) < T_REL ? "hand" : null };
+  } else {                                            // follow-through / settled
+    pst = { hand:[MX - 16, MY - 22], lift:0, crouch:0, gloveTap:false, ballIn:null };
   }
-  else if (phase === "settle" && t - phaseT0 > 700){ phase = "idle"; phaseT0 = t; }
+  if (t >= outEnd - T_RESET + 500) pst.ballIn = "glove"; // ball back for next pitch
 
-  // windup bob for the pitcher silhouette
-  let bob = 0;
-  if (phase === "windup"){
-    const wp = Math.min(1, (t - phaseT0) / windupMs);
-    bob = -7 * Math.sin(wp * Math.PI);
-  }
+  drawPitcher(pst);
 
-  drawBG();
-  drawMound(bob);
-  drawZone(phase === "flight" || phase === "flash");
-  drawPlateAndBox();
-
-  if (phase === "flight"){
-    const p = Math.min(1, (t - phaseT0) / pitch.dur);
-    const b = ballAt(pitch, p);
-    trail.push(b); if (trail.length > 10) trail.shift();
-    drawTrail();
+  /* pitch flight */
+  if (t >= relT && t < flightEnd){
+    ballInFlight = true; zoneHot = true;
+    ballP = (t - relT) / sp.flight;
+    const b = pitchBallAt(sp, Math.min(1, ballP));
+    trail.push(b); if (trail.length > 12) trail.shift();
+    drawTrail(0.30);
     drawBall(b.x, b.y, b.r);
-    if (p >= 1) startFlash();
-  } else if (phase === "flash"){
-    drawFlash();
-    const b = ballAt(pitch, 1);
-    drawBall(b.x, b.y, b.r * 1.1);
+  } else if (sp.outcome === "take" && t >= flightEnd && t < flightEnd + 260){
+    // take: ball runs past the zone, fading
+    const u = (t - flightEnd) / 260;
+    const b = pitchBallAt(sp, 1 + u * 0.18);
+    ctx.globalAlpha = 1 - u;
+    drawBall(b.x, b.y, b.r);
+    ctx.globalAlpha = 1;
+  }
+  drawZone(zoneHot);
+
+  /* outcome */
+  if (t >= flightEnd && t < outEnd){
+    const ot = (t - flightEnd) / outMs;
+    if (sp.outcome === "whiff"){
+      if (t - flightEnd < 150) drawBatStreak((t - flightEnd) / 150);
+      drawRing(PLATE_X, PLATE_Y - 8, Math.min(1, (t - flightEnd) / 260), "rgba(255,255,255,A)");
+      drawOutcome("SWING AND A MISS", ot);
+    } else if (sp.outcome === "take"){
+      drawOutcome("BALL", ot);
+    } else { // contact: ball launches back into the field
+      if (t - flightEnd < 150){
+        drawBatStreak((t - flightEnd) / 150);
+        drawRing(PLATE_X, 622, Math.min(1, (t - flightEnd) / 260), "rgba(255,176,58,A)");
+      }
+      const b = battedAt(sp, sstep(ot));
+      trail.push(b); if (trail.length > 16) trail.shift();
+      drawTrail(0.35);
+      drawBall(b.x, b.y, b.r);
+      drawOutcome(sp.tag, ot);
+    }
   }
 
-  drawText();
-  drawPitchLabel();
+  /* chrome */
+  if (t >= lookEnd && t < flightEnd) drawPitchTag(sp);
+  drawChrome();
   requestAnimationFrame(frame);
 }
 
-phaseT0 = now();
 requestAnimationFrame(frame);
 </script>
 </body>
