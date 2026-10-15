@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b10">
+<title>Batter's View — Concept Mockup</title>
+<style>
+  :root{ --bg:#0b0b10; --txt:#f4f2ec; --dim:#9a97a8; --acc:#ff7a1a; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);min-height:100vh;overscroll-behavior:none;}
+  body{display:flex;justify-content:center;align-items:flex-start;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  #wrap{width:100%;max-width:430px;padding:14px 12px 24px;}
+  #cvwrap{position:relative;border-radius:18px;overflow:hidden;border:1px solid #262633;
+    box-shadow:0 18px 60px rgba(0,0,0,.6);}
+  canvas{display:block;width:100%;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;}
+  .cap{text-align:center;color:var(--dim);font-size:12px;margin-top:12px;letter-spacing:.08em;line-height:1.7;}
+  .cap b{color:var(--txt);}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="cvwrap"><canvas id="cv"></canvas></div>
+  <p class="cap">First-person batter's-box concept — look &amp; feel only.<br><b>Tap the frame</b> to throw the next pitch early.</p>
+</div>
+<script>
+"use strict";
+/* ============ Batter's-view concept mockup (no game logic) ============ */
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+const LW = 420, LH = 760;               // logical portrait frame
+let DPR = 1;
+
+const ACC = "#ff7a1a", TXT = "#f4f2ec", DIM = "#9a97a8";
+
+function sizeCanvas(){
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = LW * DPR; cv.height = LH * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener("resize", sizeCanvas);
+sizeCanvas();
+
+/* ---------- pitch choreography ---------- */
+const PITCHES = [
+  { label:"FF", velo:"98", dur:450, startX:  6, endX: 18,  drop:  6, col:ACC },   // fastball: straight, quick
+  { label:"SL", velo:"87", dur:640, startX: 26, endX:-42,  drop: 26, col:"#7dd7ff" }, // slider: late sweep
+];
+let pitchNo = 0;                 // alternates FF / SL
+let phase = "idle";              // idle | windup | flight | flash | settle
+let phaseT0 = 0, flashT0 = 0;
+let trail = [];
+const now = () => performance.now();
+
+function startWindup(quick){
+  phase = "windup"; phaseT0 = now();
+  trail = [];
+  windupMs = quick ? 260 : 800;
+}
+let windupMs = 800;
+function startFlight(){
+  phase = "flight"; phaseT0 = now();
+  trail = [];
+}
+function startFlash(){
+  phase = "flash"; flashT0 = now();
+}
+function current(){ return PITCHES[pitchNo % PITCHES.length]; }
+
+cv.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  if (phase === "idle" || phase === "windup" || phase === "settle") startWindup(true);
+});
+
+/* ---------- scene drawing ---------- */
+function drawBG(){
+  const g = ctx.createLinearGradient(0, 0, 0, LH);
+  g.addColorStop(0, "#08080d"); g.addColorStop(0.45, "#0e0e15"); g.addColorStop(1, "#0b0b10");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, LW, LH);
+  // stadium glow on horizon
+  const rg = ctx.createRadialGradient(LW/2, 200, 10, LW/2, 200, 300);
+  rg.addColorStop(0, "rgba(255,122,26,0.10)"); rg.addColorStop(1, "rgba(255,122,26,0)");
+  ctx.fillStyle = rg; ctx.fillRect(0, 0, LW, LH);
+  // foul lines converging to the mound
+  ctx.strokeStyle = "rgba(244,242,236,0.07)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(LW/2, 660); ctx.lineTo(40, 250); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(LW/2, 660); ctx.lineTo(LW-40, 250); ctx.stroke();
+}
+
+function drawMound(bob){
+  // mound silhouette
+  ctx.fillStyle = "#14141c";
+  ctx.beginPath(); ctx.ellipse(LW/2, 218, 52, 15, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(255,122,26,0.25)"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.ellipse(LW/2, 214, 52, 15, 0, Math.PI, 2*Math.PI); ctx.stroke();
+  // rubber
+  ctx.fillStyle = "rgba(244,242,236,0.5)";
+  ctx.fillRect(LW/2 - 9, 208, 18, 4);
+  // pitcher silhouette (abstract), bobs during windup
+  const y = 150 + bob;
+  ctx.fillStyle = "#1b1b25";
+  ctx.beginPath(); ctx.arc(LW/2, y, 11, 0, 7); ctx.fill();                    // head
+  ctx.beginPath();                                                              // torso
+  ctx.moveTo(LW/2 - 13, y + 12); ctx.lineTo(LW/2 + 13, y + 12);
+  ctx.lineTo(LW/2 + 17, y + 44); ctx.lineTo(LW/2 - 17, y + 44);
+  ctx.closePath(); ctx.fill();
+  ctx.fillRect(LW/2 - 12, y + 44, 9, 22); ctx.fillRect(LW/2 + 3, y + 44, 9, 22); // legs
+  // rim light
+  ctx.strokeStyle = "rgba(255,122,26,0.55)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(LW/2, y, 11, -1.1, 0.6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(LW/2 + 13, y + 12); ctx.lineTo(LW/2 + 17, y + 44); ctx.stroke();
+}
+
+function drawZone(bright){
+  const cx = LW/2, w = 96, h = 122, y = 560 - h/2;
+  ctx.save();
+  ctx.setLineDash([7, 7]);
+  ctx.strokeStyle = bright ? "rgba(244,242,236,0.5)" : "rgba(244,242,236,0.22)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(cx - w/2, y, w, h);
+  ctx.restore();
+}
+
+function drawPlateAndBox(){
+  const cx = LW/2, py = 648;
+  // batter's-box chalk lines in perspective
+  ctx.strokeStyle = "rgba(244,242,236,0.5)"; ctx.lineWidth = 3; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(108, LH); ctx.lineTo(148, 592); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(LW-108, LH); ctx.lineTo(LW-148, 592); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(148, 592); ctx.lineTo(LW-148, 592); ctx.stroke();
+  // home plate pentagon
+  const pw = 34;
+  ctx.fillStyle = "#e8e6df";
+  ctx.beginPath();
+  ctx.moveTo(cx - pw, py); ctx.lineTo(cx + pw, py);
+  ctx.lineTo(cx + pw, py + 14); ctx.lineTo(cx, py + 26); ctx.lineTo(cx - pw, py + 14);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.fillRect(cx - pw, py, pw*2, 3);
+}
+
+function drawBall(x, y, r){
+  ctx.save();
+  ctx.shadowColor = "rgba(255,255,255,0.55)"; ctx.shadowBlur = 14;
+  ctx.fillStyle = "#f4f2ec";
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = "#c8321e"; ctx.lineWidth = Math.max(1, r * 0.1);
+  ctx.beginPath(); ctx.arc(x - r*0.35, y, r*0.72, -0.9, 0.9); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x + r*0.35, y, r*0.72, Math.PI - 0.9, Math.PI + 0.9); ctx.stroke();
+}
+
+function drawTrail(){
+  for (let i = 0; i < trail.length; i++){
+    const t = trail[i], a = (i + 1) / trail.length * 0.32;
+    ctx.fillStyle = "rgba(244,242,236," + a.toFixed(2) + ")";
+    ctx.beginPath(); ctx.arc(t.x, t.y, t.r * 0.75, 0, 7); ctx.fill();
+  }
+}
+
+function drawText(){
+  ctx.textAlign = "left"; ctx.fillStyle = TXT;
+  ctx.font = "800 13px -apple-system, sans-serif";
+  ctx.fillText("BATTER'S VIEW", 16, 30);
+  ctx.fillStyle = DIM; ctx.font = "700 11px -apple-system, sans-serif";
+  ctx.fillText("CONCEPT MOCKUP", 16, 48);
+  ctx.textAlign = "center"; ctx.fillStyle = "rgba(154,151,168,0.75)";
+  ctx.font = "700 11px -apple-system, sans-serif";
+  ctx.fillText("TAP TO THROW", LW/2, LH - 18);
+}
+
+function drawPitchLabel(){
+  if (phase !== "flight" && phase !== "flash") return;
+  const p = current();
+  ctx.textAlign = "right";
+  ctx.fillStyle = p.col; ctx.font = "900 15px -apple-system, sans-serif";
+  ctx.fillText(p.label, LW - 16, 32);
+  ctx.fillStyle = DIM; ctx.font = "700 12px -apple-system, sans-serif";
+  ctx.fillText(p.velo + " MPH", LW - 16, 50);
+}
+
+function drawFlash(){
+  const t = (now() - flashT0) / 220;   // 0..1
+  if (t >= 1) return;
+  const a = 1 - t;
+  ctx.strokeStyle = "rgba(255,176,58," + (a * 0.9).toFixed(2) + ")";
+  ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(LW/2, 600, 26 + t * 60, 0, 7); ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255," + (a * 0.16).toFixed(2) + ")";
+  ctx.fillRect(0, 0, LW, LH);
+}
+
+/* ball path: release -> plate, late break eased by p^3 */
+function ballAt(pitch, p){
+  const rx = LW/2, ry = 244;                       // release point
+  const ty = 600;                                  // plate crossing height
+  const x = rx + pitch.startX + (pitch.endX - pitch.startX) * Math.pow(p, 3);
+  const y = ry + (ty - ry) * p + pitch.drop * Math.pow(p, 2.4);
+  const r = 3 + 13 * Math.pow(p, 1.6);
+  return { x, y, r };
+}
+
+/* ---------- main loop ---------- */
+function frame(){
+  const t = now();
+  const pitch = current();
+
+  // phase transitions
+  if (phase === "idle" && t - phaseT0 > 500) startWindup(false);
+  else if (phase === "windup" && t - phaseT0 > windupMs) startFlight();
+  else if (phase === "flash" && t - flashT0 > 420){
+    phase = "settle"; phaseT0 = t;
+    pitchNo++;
+  }
+  else if (phase === "settle" && t - phaseT0 > 700){ phase = "idle"; phaseT0 = t; }
+
+  // windup bob for the pitcher silhouette
+  let bob = 0;
+  if (phase === "windup"){
+    const wp = Math.min(1, (t - phaseT0) / windupMs);
+    bob = -7 * Math.sin(wp * Math.PI);
+  }
+
+  drawBG();
+  drawMound(bob);
+  drawZone(phase === "flight" || phase === "flash");
+  drawPlateAndBox();
+
+  if (phase === "flight"){
+    const p = Math.min(1, (t - phaseT0) / pitch.dur);
+    const b = ballAt(pitch, p);
+    trail.push(b); if (trail.length > 10) trail.shift();
+    drawTrail();
+    drawBall(b.x, b.y, b.r);
+    if (p >= 1) startFlash();
+  } else if (phase === "flash"){
+    drawFlash();
+    const b = ballAt(pitch, 1);
+    drawBall(b.x, b.y, b.r * 1.1);
+  }
+
+  drawText();
+  drawPitchLabel();
+  requestAnimationFrame(frame);
+}
+
+phaseT0 = now();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
